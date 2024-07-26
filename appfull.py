@@ -3,9 +3,11 @@ import mediapipe as mp
 import numpy as np
 import pygame
 import tkinter as tk
+from tkinter import ttk
 from threading import Thread
 import pyautogui
 import time
+
 # Initialize Mediapipe Face Mesh
 mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.5, min_tracking_confidence=0.5)
@@ -27,6 +29,10 @@ keyboard = [
 text = ""
 last_blink_time = pygame.time.get_ticks()
 blink_detected = False
+
+# Global flags to control thread termination
+eye_typing_running = False
+virtual_keyboard_running = False
 
 # Helper function to draw keyboard
 def draw_keyboard():
@@ -72,10 +78,10 @@ def calculate_ear(eye_landmarks):
 
 # Eye Typing Functionality
 def eye_typing():
-    global text, last_blink_time
+    global text, last_blink_time, eye_typing_running
     
     cap = cv2.VideoCapture(0)
-    while cap.isOpened():
+    while cap.isOpened() and eye_typing_running:
         success, image = cap.read()
         if not success:
             break
@@ -133,8 +139,9 @@ def eye_typing():
     cap.release()
     cv2.destroyAllWindows()
 
-
 def virtual_keyboard():
+    global virtual_keyboard_running
+
     # Initialize MediaPipe Hands
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(max_num_hands=1)
@@ -168,7 +175,7 @@ def virtual_keyboard():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-    while cap.isOpened():
+    while cap.isOpened() and virtual_keyboard_running:
         ret, frame = cap.read()
         if not ret:
             break
@@ -210,26 +217,59 @@ def virtual_keyboard():
     cap.release()
     cv2.destroyAllWindows()
 
-
 # Tkinter Interface
 def start_virtual_keyboard():
+    global virtual_keyboard_running
+    virtual_keyboard_running = True
     Thread(target=virtual_keyboard).start()
 
-
 def start_eye_typing():
+    global eye_typing_running
+    eye_typing_running = True
     Thread(target=eye_typing).start()
+
+def stop_virtual_keyboard():
+    global virtual_keyboard_running
+    virtual_keyboard_running = False
+
+def stop_eye_typing():
+    global eye_typing_running
+    eye_typing_running = False
+
+def terminate_program():
+    stop_virtual_keyboard()
+    stop_eye_typing()
+    root.quit()
 
 # Create the main window
 root = tk.Tk()
 root.title("Select Mode")
-root.geometry("300x200")
+root.geometry("1080x720")
+root.resizable(False, False)
+
+# Apply ttk styling
+style = ttk.Style()
+style.configure("TButton", font=("Helvetica", 12), padding=10)
+style.configure("TLabel", font=("Helvetica", 14), padding=10)
 
 # Create and place buttons
-btn_virtual_keyboard = tk.Button(root, text="Virtual Keyboard", command=start_virtual_keyboard)
+lbl_title = ttk.Label(root, text="Select Mode", style="TLabel")
+lbl_title.pack(pady=10)
+
+btn_virtual_keyboard = ttk.Button(root, text="Start Virtual Keyboard", command=start_virtual_keyboard)
 btn_virtual_keyboard.pack(pady=10)
 
-btn_eye_typing = tk.Button(root, text="Eye Typing", command=start_eye_typing)
+btn_eye_typing = ttk.Button(root, text="Start Eye Typing", command=start_eye_typing)
 btn_eye_typing.pack(pady=10)
+
+btn_stop_virtual_keyboard = ttk.Button(root, text="Stop Virtual Keyboard", command=stop_virtual_keyboard)
+btn_stop_virtual_keyboard.pack(pady=10)
+
+btn_stop_eye_typing = ttk.Button(root, text="Stop Eye Typing", command=stop_eye_typing)
+btn_stop_eye_typing.pack(pady=10)
+
+btn_terminate = ttk.Button(root, text="Terminate Program", command=terminate_program)
+btn_terminate.pack(pady=10)
 
 # Start the Tkinter main loop
 root.mainloop()
