@@ -1,0 +1,27 @@
+name: CVEarity SBOM Discovery
+
+on:
+  repository_dispatch:
+    types:
+      - cvearity_sbom_scan
+      - cvearity_iac_bom_scan
+      - cvearity_ai_bom_scan
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run CVEarity Discovery Agent
+        env:
+          CVEARITY_API_URL: ${{ github.event.client_payload.api_url }}
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -e CVEARITY_API_URL \
+            prasad2374/cvearitybom:latest \
+            --type sbom \
+            --scan-id ${{ github.event.client_payload.scan_id }} \
+            --source /workspace
